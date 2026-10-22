@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
+  <title>Sentinel Desk | Security Event Monitor</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+  <script src="/static/email.js" defer></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" href="#overview"><span class="logo">S</span><span><strong>Sentinel Desk</strong><small>SECURITY OPERATIONS</small></span></a>
+    <div class="nav-caption">WORKSPACE</div>
+    <nav aria-label="Primary navigation">
+      <button class="nav-link active" data-view="overview"><span>◈</span> Overview</button>
+      <button class="nav-link" data-view="events"><span>≡</span> Event Explorer</button>
+      <button class="nav-link" data-view="alerts"><span>◇</span> Alert Center</button>
+      <button class="nav-link" data-view="sources"><span>↧</span> Data Ingestion</button>
+      <button class="nav-link" data-view="email"><span>✉</span> Email Threat Analysis</button>
+    </nav>
+    <div class="sidebar-bottom"><span class="signal"></span> Local monitoring workspace<small>Running on 127.0.0.1</small></div>
+  </aside>
+  <main class="main">
+    <header class="topbar"><div><span class="eyebrow">SECURITY ANALYTICS</span><h1 id="page-title">Overview</h1></div><div class="top-actions"><span class="live-pill"><i></i> SYSTEM ONLINE</span><button class="button secondary" id="refresh">↻ Refresh</button></div></header>
+    <section class="range-panel" aria-label="Time range filter">
+      <div class="range-heading"><span class="eyebrow">TIME RANGE</span><span id="range-summary" class="range-summary">Last 24 hours · Local time</span></div>
+      <form class="range-relative" id="relative-form">
+        <span class="relative-label">Search events from the last</span>
+        <input id="relative-count" type="number" value="1" min="1" max="1000" step="1" required aria-label="How many days, weeks, months or years">
+        <select id="relative-unit" aria-label="Time unit"><option value="days">Days</option><option value="weeks">Weeks</option><option value="months">Months</option><option value="years">Years</option></select>
+        <button type="submit" class="button primary" id="relative-search">Search</button>
+      </form>
+      <div class="range-controls">
+        <div class="range-presets" role="group" aria-label="Quick time ranges">
+          <button class="range-button active" data-range="24h">24 hours</button>
+          <button class="range-button" data-range="7d">7 days</button>
+          <button class="range-button" data-range="30d">30 days</button>
+          <button class="range-button" data-range="all">All time</button>
+          <button class="range-button" data-range="custom">Custom</button>
+        </div>
+        <div class="range-custom hidden" id="range-custom">
+          <label>From <input type="datetime-local" id="time-from" aria-label="Start date and time"></label>
+          <label>To <input type="datetime-local" id="time-to" aria-label="End date and time"></label>
+          <button class="button primary" id="apply-range">Apply range</button>
+        </div>
+      </div>
+    </section>
+    <section id="view-overview" class="view">
+      <div class="heading-row"><div><h2>Security at a glance</h2><p>Normalized event telemetry and correlation-based detection</p></div><button class="button primary" id="demo-top">Generate demo activity</button></div>
+      <div class="metric-grid">
+        <article class="metric"><span>Events in range</span><strong id="metric-total">0</strong><small>Matching selected time window</small></article>
+        <article class="metric"><span>Firewall denies</span><strong id="metric-day">0</strong><small>Blocked connection events</small></article>
+        <article class="metric"><span>Open alerts</span><strong id="metric-alerts">0</strong><small>Awaiting triage</small></article>
+        <article class="metric"><span>Critical alerts</span><strong class="critical-text" id="metric-critical">0</strong><small>Immediate review</small></article>
+      </div>
+      <div class="two-col"><article class="panel"><div class="panel-heading"><div><h3>Activity over time</h3><p>Hover for details, click a time bucket to investigate</p></div><select id="trend-series" class="chart-select" aria-label="Choose chart data"><option value="count">All events</option><option value="denied">Firewall denies</option><option value="failed">Failed logins</option></select></div><div class="chart-wrapper"><canvas id="trend-chart" height="220" tabindex="0" role="button" aria-label="Interactive event activity chart; use left and right arrows to select a time bucket, then Enter to investigate"></canvas><div class="chart-tooltip hidden" id="chart-tooltip" role="status"></div></div><div class="chart-footer"><span id="trend-total">Events for selected range</span><span>Click chart to open matching events ↗</span></div></article>
+      <article class="panel"><div class="panel-heading"><div><h3>Log sources</h3><p>Click a source to inspect its events</p></div></div><div id="source-breakdown" class="bars"></div></article></div>
+      <article class="panel email-overview-panel"><div class="panel-heading"><div><h3>Email threat monitoring</h3><p>Persistent email investigations within the selected time range</p></div><button class="link-button" data-go="email">Open email investigations →</button></div><div class="email-snapshot"><div><span>Analysed</span><strong id="email-overview-total">0</strong></div><div><span>Suspicious</span><strong id="email-overview-suspicious">0</strong></div><div><span>High / Critical</span><strong id="email-overview-high">0</strong></div></div></article>
+      <article class="panel"><div class="panel-heading"><div><h3>Recent detections</h3><p>Rules triggered by suspicious activity</p></div><button class="link-button" data-go="alerts">All alerts →</button></div><div id="overview-alerts" class="alert-list"></div></article>
+    </section>
+    <section id="view-events" class="view hidden">
+      <div class="heading-row"><div><h2>Event Explorer</h2><p>Search and filter normalized security logs</p></div><a class="button secondary" href="/api/export/events.csv" id="export-events">↓ Export CSV</a></div>
+      <article class="panel"><div class="filters"><input id="event-search" type="search" placeholder="Search user, IP address or message" aria-label="Search events"><select id="filter-source" aria-label="Filter source"><option value="">All sources</option><option>fortigate</option><option>windows</option><option>linux</option><option>application</option><option>cloud</option><option>other</option></select><select id="filter-severity" aria-label="Filter severity"><option value="">All severities</option><option>info</option><option>low</option><option>medium</option><option>high</option><option>critical</option></select><select id="filter-type" aria-label="Filter event type"><option value="">All event types</option><option value="firewall_deny">Firewall deny</option><option value="firewall_allow">Firewall allow</option><option value="login_failed">Login failed</option><option value="login_success">Login success</option><option value="process_start">Process start</option><option value="privilege_change">Privilege change</option><option value="file_access">File access</option></select></div><div class="table-scroller"><table><thead><tr><th>Time (UTC)</th><th>Source</th><th>Event</th><th>Severity</th><th>Source IP</th><th>User</th><th>Description</th></tr></thead><tbody id="events-body"></tbody></table></div><div class="pagination"><span id="events-count">0 events</span><div><button id="page-prev" class="button secondary">Previous</button><span id="page-label">1</span><button id="page-next" class="button secondary">Next</button></div></div></article>
+    </section>
+    <section id="view-alerts" class="view hidden">
+      <div class="heading-row"><div><h2>Alert Center</h2><p>Review, investigate and resolve detection alerts</p></div><a class="button secondary" href="/api/export/alerts.csv" id="export-alerts">↓ Export CSV</a></div>
+      <div class="filter-tabs"><button class="tab active" data-status="all">All alerts</button><button class="tab" data-status="open">Open</button><button class="tab" data-status="closed">Resolved</button></div><div id="all-alerts" class="alert-list full"></div>
+    </section>
+    <section id="view-email" class="view hidden">
+      <div class="heading-row"><div><h2>Email Threat Analysis</h2><p>Evidence-based email investigations · no links or attachments are opened</p></div><span class="email-info-chip">LOCAL FORENSICS</span></div>
+      <div class="email-metrics metric-grid">
+        <article class="metric"><span>Emails analysed</span><strong id="email-total">0</strong><small>In selected date range</small></article>
+        <article class="metric"><span>Suspicious emails</span><strong id="email-suspicious">0</strong><small>Indicators requiring review</small></article>
+        <article class="metric"><span>High / Critical</span><strong class="critical-text" id="email-high">0</strong><small>Priority investigations</small></article>
+      </div>
+      <div class="two-col email-analyse-grid">
+        <article class="panel email-input-panel"><div class="panel-heading"><div><h3>Submit an email</h3><p>Upload an .eml file or paste its complete raw headers</p></div></div>
+          <div class="email-mode-tabs" role="group" aria-label="Analysis input"><button class="tab active" id="email-mode-file" type="button">Upload .eml</button><button class="tab" id="email-mode-headers" type="button">Paste headers</button></div>
+          <div id="email-file-panel" class="email-input-area"><label for="email-file">Choose a locally saved email (max. 1 MB)</label><input id="email-file" type="file" accept=".eml,message/rfc822"><small>Attachments and active HTML are never executed.</small></div>
+          <div id="email-headers-panel" class="email-input-area hidden"><label for="email-header-text">Raw email headers</label><textarea id="email-header-text" rows="7" spellcheck="false" placeholder="From: sender@example.com&#10;To: recipient@example.com&#10;Date: ...&#10;Authentication-Results: ..."></textarea><small>Header-only analysis cannot detect threats expressed solely in the email body.</small></div>
+          <button id="email-analyse" class="button primary email-submit" type="button">Analyse Email</button>
+          <p class="email-note">Reported SPF, DKIM, DMARC and compauth values are read from supplied headers, not independently verified. Email content stays in your local SQLite database.</p>
+        </article>
+        <article class="panel"><div class="panel-heading"><div><h3>Investigation approach</h3><p>What the detection engine can and cannot conclude</p></div></div>
+          <div class="email-principles"><div><strong>01 · Authentication</strong><p>Extract reported SPF, DKIM, DMARC and Microsoft compauth verdicts. Uploaded headers may be forged.</p></div><div><strong>02 · Content and context</strong><p>Detect sextortion, credential requests, urgent pressure, suspicious links and sender identity mismatches.</p></div><div><strong>03 · Explainable decisions</strong><p>Each indicator has a rule ID, a weighted score, a rationale and its evidence source.</p></div><div><strong>04 · Investigation workflow</strong><p>Review stored headers, update case status and retain a stable investigation ID.</p></div></div>
+        </article>
+      </div>
+      <div class="two-col"><article class="panel"><div class="panel-heading"><div><h3>Email threats over time</h3><p>Hover to inspect daily totals; click a bar to filter investigations</p></div></div><div class="email-chart-wrap"><canvas id="email-trend" height="200" aria-label="Interactive daily email investigations chart" tabindex="0" role="button"></canvas><div id="email-trend-tip" class="email-chart-tip">Select a day to investigate</div></div></article>
+      <article class="panel"><div class="panel-heading"><div><h3>Detections by category</h3><p>Click a category to filter the investigation list</p></div></div><div id="email-categories" class="bars email-category-bars"></div></article></div>
+      <article class="panel email-table-panel"><div class="panel-heading"><div><h3>Email investigations</h3><p>Search sender, originating IP, threat type, severity and case status</p></div><button id="email-reset-filters" class="button secondary">Reset filters</button></div>
+        <div class="email-filters filters"><input type="search" id="email-q" aria-label="Search emails" placeholder="Search email, subject or message"><input type="search" id="email-sender" aria-label="Filter sender" placeholder="Sender address"><input type="search" id="email-ip" aria-label="Originating IP" placeholder="Originating IP"><select id="email-category" aria-label="Threat category"><option value="">All threat categories</option><option>Sextortion</option><option>Credential Phishing</option><option>Suspected Spoofing</option><option>Impersonation / Payment Fraud</option><option>Suspicious Email</option><option>No Clear Threat</option></select><select id="email-severity" aria-label="Risk severity"><option value="">All risk levels</option><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select><select id="email-status" aria-label="Investigation status"><option value="">All statuses</option><option>New</option><option>Investigating</option><option>Resolved</option><option>False Positive</option></select><select id="email-date-field" aria-label="Date filter field"><option value="analysed_at">Date analysed</option><option value="received_at">Original email date</option></select></div>
+        <div class="table-scroller"><table class="email-table"><thead><tr><th>Investigation</th><th>Analysed (UTC)</th><th>Sender / IP</th><th>Subject</th><th>Threat type</th><th>Risk</th><th>Status</th><th>Action</th></tr></thead><tbody id="email-body"></tbody></table></div>
+        <div class="pagination"><span id="email-count">0 investigations</span><div><button class="button secondary" id="email-clear-day" hidden>Clear day filter</button><button class="button secondary" id="email-prev">Previous</button><span id="email-page">1</span><button class="button secondary" id="email-next">Next</button></div></div>
+      </article>
+    </section>
+    <section id="view-sources" class="view hidden">
+      <div class="heading-row"><div><h2>Data Ingestion</h2><p>Collect system and network logs live, import saved files or generate sample events</p></div></div>
+      <article class="panel stack collector-panel"><div class="panel-heading"><div><h3>Live log collectors</h3><p>Start a source below to ingest incoming events automatically. This dashboard stays accessible only on your computer.</p></div><button class="button secondary" id="collector-refresh">↻ Update status</button></div>
+        <div class="collector-grid">
+          <div class="collector-item"><div class="collector-top"><strong>Syslog UDP</strong><span class="collector-state" id="state-syslog">Stopped</span></div><p>Receive FortiGate and standard syslog messages. Default listener: <code id="syslog-bind">127.0.0.1:5514</code></p><span class="collector-count" id="count-syslog">0 events collected</span><small id="error-syslog" class="collector-error"></small><div class="collector-actions"><button class="button primary" data-collector="syslog" id="control-syslog">Start listener</button><button class="button secondary" id="test-syslog">Send test event</button></div></div>
+          <div class="collector-item"><div class="collector-top"><strong>Log folder watcher</strong><span class="collector-state" id="state-files">Stopped</span></div><p>Automatically ingest appended <code>.log</code> or <code>.jsonl</code> lines in <code>log_inbox</code>.</p><span class="collector-count" id="count-files">0 events collected</span><small id="error-files" class="collector-error"></small><button class="button primary" data-collector="files" id="control-files">Start watcher</button></div>
+          <div class="collector-item"><div class="collector-top"><strong>Windows Security logs</strong><span class="collector-state" id="state-windows">Stopped</span></div><p>Collect selected Windows logins, process starts and group changes. Windows only; reading Security logs may need admin rights.</p><span class="collector-count" id="count-windows">0 events collected</span><small id="error-windows" class="collector-error"></small><button class="button primary" data-collector="windows" id="control-windows">Start Windows logs</button></div>
+        </div>
+        <p class="collector-guidance">To receive logs from another device, configure <code>MONITOR_SYSLOG_HOST=0.0.0.0</code> before starting the app and allow UDP port 5514 only from trusted lab devices. UDP syslog is unencrypted and unauthenticated; use only on a trusted lab network or through a protected relay.</p>
+      </article>
+      <div class="two-col"><article class="panel stack"><div class="glyph">⌁</div><h3>Load demonstration data</h3><p>Create randomized Windows, FortiGate and Linux events with simulated login attacks, firewall bursts, and suspicious process activity.</p><button class="button primary" id="demo-import">Generate sample events</button></article>
+      <article class="panel stack"><div class="glyph">⇪</div><h3>Import logs or JSON</h3><p>Import FortiGate .log files or Windows / normalized JSON events from a local file. The file stays on this computer and is sent to the local monitoring server.</p><label class="file-label" for="event-file">Choose a .log, .json or .jsonl file</label><input type="file" id="event-file" accept=".json,.jsonl,.log,.txt,application/json,text/plain"><span id="filename">No file selected</span><button class="button secondary" id="import-button">Import events</button></article></div>
+      <article class="panel stack"><div class="panel-heading"><div><h3>Search indexing</h3><p>Searchable event fields are indexed automatically during ingestion.</p></div><button class="button secondary" id="rebuild-index">↻ Rebuild index</button></div><div class="index-status"><div><small>Stored events</small><strong id="index-events">—</strong></div><div><small>Indexed events</small><strong id="index-count">—</strong></div><div><small>Index state</small><strong id="index-health">Checking…</strong></div><div><small>Indexed emails</small><strong id="index-emails">—</strong></div></div><p class="index-description">SQLite FTS5 indexes event messages, usernames, IPs, email subjects and senders. Date, status, sender, source, severity and threat-category filters also use database indexes.</p></article>
+      <article class="panel stack"><h3>Expected event structure</h3><p>Required: <code>event_type</code>. Optional: <code>timestamp</code>, <code>source</code>, <code>severity</code>, <code>src_ip</code>, <code>dest_ip</code>, <code>username</code>, <code>message</code> and <code>details</code>.</p><pre>{
+  "source": "fortigate",
+  "event_type": "firewall_deny",
+  "src_ip": "203.0.113.77",
+  "dest_ip": "10.0.0.5",
+  "severity": "medium",
+  "message": "Denied inbound connection"
+}</pre><div class="danger-zone"><div><strong>Clear workspace</strong><p>Remove imported events and generated alerts from this local installation.</p></div><button class="button danger" id="reset-button">Clear all data</button></div></article>
+    </section>
+    <footer>Sentinel Desk · Local security analytics lab · Demo telemetry is synthetic</footer>
+  </main>
+</div>
+<div id="email-modal" class="email-modal" hidden><div class="email-modal-overlay" id="email-overlay"></div><section class="email-modal-card" role="dialog" aria-modal="true" aria-labelledby="email-investigation-title"><header class="email-modal-top"><div><span class="eyebrow">CASE INVESTIGATION</span><h2 id="email-investigation-title">Investigation</h2></div><button id="email-close" class="button secondary" aria-label="Close investigation">✕ Close</button></header><div id="email-detail-content" class="email-detail-content"></div></section></div>
+<div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

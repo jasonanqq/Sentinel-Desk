@@ -1,0 +1,12 @@
+From: security@hotmail.com
+To: analyst@example.org
+Subject: You've been hacked
+Date: Tue, 09 Jul 2024 10:30:00 +0000
+Message-ID: <test-extortion-01@example.org>
+Authentication-Results: mx.example.org; spf=fail smtp.mailfrom=relay.invalid helo=me88.com; dkim=none; dmarc=fail header.from=hotmail.com; compauth=fail
+Received: from me88.com (me88.com [203.0.113.52]) by mx.example.org; Tue, 09 Jul 2024 10:30:00 +0000
+Return-Path: <alerts@relay.invalid>
+Content-Type: text/plain; charset=utf-8
+
+I installed Pegasus spyware on your computer. I will release your intimate videos to your family if you do not comply.
+Pay $1,200 in Litecoin within 48 hours to a cryptocurrency wallet address.

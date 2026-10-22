@@ -1,0 +1,11 @@
+From: team@example.org
+To: analyst@example.org
+Subject: Project status update
+Date: Tue, 09 Jul 2024 09:00:00 +0000
+Message-ID: <test-good-01@example.org>
+Authentication-Results: mx.example.org; spf=pass smtp.mailfrom=example.org; dkim=pass header.d=example.org; dmarc=pass header.from=example.org; compauth=pass
+Content-Type: text/plain; charset=utf-8
+
+Hi team,
+The report for this week's project work is attached to our internal shared folder.
+Thanks.

@@ -1,0 +1,18 @@
+{
+  "spf_fail": 17,
+  "dkim_fail": 10,
+  "dkim_missing": 3,
+  "dmarc_fail": 24,
+  "compauth_fail": 10,
+  "sender_mismatch": 15,
+  "relay_mismatch": 5,
+  "sextortion_threat": 34,
+  "crypto_demand": 26,
+  "urgency": 7,
+  "spyware_claim": 6,
+  "credentials_request": 26,
+  "suspicious_link": 18,
+  "brand_impersonation": 10,
+  "auth_alignment": 14,
+  "payment_impersonation": 24
+}

@@ -1,0 +1,8 @@
+type=traffic subtype=forward action=deny srcip=203.0.113.55 dstip=10.0.0.12 service=SSH level=warning msg="Connection denied by firewall policy"
+type=traffic subtype=forward action=deny srcip=203.0.113.55 dstip=10.0.0.12 service=SSH level=warning msg="Connection denied by firewall policy"
+type=traffic subtype=forward action=deny srcip=203.0.113.55 dstip=10.0.0.12 service=SSH level=warning msg="Connection denied by firewall policy"
+type=traffic subtype=forward action=deny srcip=203.0.113.55 dstip=10.0.0.12 service=SSH level=warning msg="Connection denied by firewall policy"
+type=traffic subtype=forward action=deny srcip=203.0.113.55 dstip=10.0.0.12 service=SSH level=warning msg="Connection denied by firewall policy"
+type=traffic subtype=forward action=deny srcip=203.0.113.55 dstip=10.0.0.12 service=SSH level=warning msg="Connection denied by firewall policy"
+type=traffic subtype=forward action=deny srcip=203.0.113.55 dstip=10.0.0.12 service=SSH level=warning msg="Connection denied by firewall policy"
+type=traffic subtype=forward action=deny srcip=203.0.113.55 dstip=10.0.0.12 service=SSH level=warning msg="Connection denied by firewall policy"

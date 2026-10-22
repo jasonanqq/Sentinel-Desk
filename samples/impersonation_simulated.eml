@@ -1,0 +1,9 @@
+From: manager@example.org
+To: analyst@example.org
+Subject: Invoice payment
+Date: Thu, 22 Oct 2026 11:00:00 +0000
+Message-ID: <test-bec-01@example.org>
+Authentication-Results: mx.example.org; spf=pass; dkim=pass; dmarc=pass; compauth=pass
+Content-Type: text/plain; charset=utf-8
+
+This is your CEO. Please arrange a bank transfer for the outstanding invoice today.

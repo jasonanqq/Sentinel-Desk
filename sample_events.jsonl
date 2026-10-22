@@ -1,0 +1,4 @@
+{"source":"windows","event_type":"login_failed","src_ip":"198.51.100.10","username":"admin","message":"Failed login attempt","details":{"event_id":4625}}
+{"source":"windows","event_type":"process_start","src_ip":"10.0.0.12","username":"service","message":"powershell.exe -EncodedCommand DEMO","severity":"high"}
+{"source":"fortigate","event_type":"firewall_deny","src_ip":"203.0.113.24","dest_ip":"10.0.0.5","message":"Connection denied","severity":"medium"}
+{"source":"windows","event_type":"privilege_change","src_ip":"10.0.0.8","username":"admin","message":"Local admin group membership changed","severity":"high"}
