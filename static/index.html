@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/app.js" defer></script>
   <script src="/static/email.js" defer></script>
+  <script src="/static/search.js" defer></script>
 </head>
 <body>
 <div class="app-shell">
@@ -17,6 +18,7 @@
     <nav aria-label="Primary navigation">
       <button class="nav-link active" data-view="overview"><span>◈</span> Overview</button>
       <button class="nav-link" data-view="events"><span>≡</span> Event Explorer</button>
+      <button class="nav-link" data-view="search"><span>⌕</span> Search Workbench</button>
       <button class="nav-link" data-view="alerts"><span>◇</span> Alert Center</button>
       <button class="nav-link" data-view="sources"><span>↧</span> Data Ingestion</button>
       <button class="nav-link" data-view="email"><span>✉</span> Email Threat Analysis</button>
@@ -64,6 +66,30 @@
     <section id="view-events" class="view hidden">
       <div class="heading-row"><div><h2>Event Explorer</h2><p>Search and filter normalized security logs</p></div><a class="button secondary" href="/api/export/events.csv" id="export-events">↓ Export CSV</a></div>
       <article class="panel"><div class="filters"><input id="event-search" type="search" placeholder="Search user, IP address or message" aria-label="Search events"><select id="filter-source" aria-label="Filter source"><option value="">All sources</option><option>fortigate</option><option>windows</option><option>linux</option><option>application</option><option>cloud</option><option>other</option></select><select id="filter-severity" aria-label="Filter severity"><option value="">All severities</option><option>info</option><option>low</option><option>medium</option><option>high</option><option>critical</option></select><select id="filter-type" aria-label="Filter event type"><option value="">All event types</option><option value="firewall_deny">Firewall deny</option><option value="firewall_allow">Firewall allow</option><option value="login_failed">Login failed</option><option value="login_success">Login success</option><option value="process_start">Process start</option><option value="privilege_change">Privilege change</option><option value="file_access">File access</option></select></div><div class="table-scroller"><table><thead><tr><th>Time (UTC)</th><th>Source</th><th>Event</th><th>Severity</th><th>Source IP</th><th>User</th><th>Description</th></tr></thead><tbody id="events-body"></tbody></table></div><div class="pagination"><span id="events-count">0 events</span><div><button id="page-prev" class="button secondary">Previous</button><span id="page-label">1</span><button id="page-next" class="button secondary">Next</button></div></div></article>
+    </section>
+    <section id="view-search" class="view hidden">
+      <div class="heading-row"><div><h2>Search Workbench</h2><p>Search indexes, inspect extracted fields and build investigations using a focused SPL-style query language.</p></div><span class="email-info-chip">LOCAL SEARCH</span></div>
+      <article class="panel search-panel">
+        <div class="panel-heading"><div><h3>Search events</h3><p>Uses the global time range selected above. Supported commands: search, stats, timechart, table, head and sort.</p></div><button class="button secondary" type="button" id="lab-help">Syntax guide</button></div>
+        <form id="lab-form" class="search-form"><label for="lab-query">Search query</label><textarea id="lab-query" spellcheck="false" rows="3" placeholder="index=network event_type=firewall_deny | stats count by src_ip">index=* | stats count by source</textarea><div class="search-actions"><button class="button primary" id="lab-run" type="submit">⌕ Run search</button><button class="button secondary" id="lab-save" type="button">Save search</button><button class="button secondary" id="lab-export" type="button">Export results CSV</button></div></form>
+        <div id="lab-examples" class="search-examples"><button type="button" data-lab-example="index=network | stats count by src_ip">Top network IPs</button><button type="button" data-lab-example="index=endpoint event_type=login_failed | timechart span=1h count">Failed logins over time</button><button type="button" data-lab-example="severity=high OR severity=critical | table timestamp source severity message">High-risk events</button><button type="button" data-lab-example="source=fortigate | sort -timestamp | head 20">Recent FortiGate logs</button></div>
+        <div class="search-guide" id="lab-guide" hidden><strong>Search language examples</strong><pre>index=network source=fortigate
+severity=high OR severity=critical
+username=admin | table timestamp src_ip event_type message
+index=endpoint | stats count by event_type
+index=network | timechart span=1h count
+source=windows | sort -timestamp | head 25</pre><p>Use implicit AND, OR, NOT, quoted terms and * wildcards. Field names include index, source, sourcetype, host, timestamp, severity, event_type, src_ip, dest_ip, username and details.key. This is a limited SPL-inspired syntax—not full Splunk SPL.</p></div>
+      </article>
+      <div class="search-grid">
+        <article class="panel search-facet-panel"><div class="panel-heading"><div><h3>Indexes</h3><p>Select an index to narrow your search</p></div></div><div id="lab-facets" class="search-facets"></div><div id="lab-field-facets" class="lab-field-facets"></div><div class="search-saved"><div class="panel-heading"><div><h3>Saved searches</h3><p>Stored locally in SQLite</p></div></div><div id="lab-saved" class="search-saved-list"></div></div></article>
+        <article class="panel search-results-panel"><div class="panel-heading"><div><h3>Search results</h3><p id="lab-summary">Run a query to see matching results.</p></div><span id="lab-mode" class="email-info-chip">EVENTS</span></div>
+          <div id="lab-chart-wrap" class="search-chart-wrap" hidden><canvas id="lab-chart" height="195" aria-label="Interactive timechart" tabindex="0"></canvas><p id="lab-chart-label">Select a bar to inspect its time bucket.</p></div>
+          <div id="lab-warning" class="search-warning" hidden></div>
+          <div class="table-scroller"><table class="search-result-table"><thead id="lab-table-head"></thead><tbody id="lab-table-body"></tbody></table></div>
+          <p class="search-results-note" id="lab-result-note">Detailed event data is available by clicking a result row.</p>
+        </article>
+      </div>
+      <article class="panel search-inspector" id="lab-inspector" hidden><div class="panel-heading"><div><h3>Event details</h3><p>Raw normalized fields and extracted metadata</p></div><button class="button secondary" type="button" id="lab-close-inspector">Close</button></div><pre id="lab-json"></pre></article>
     </section>
     <section id="view-alerts" class="view hidden">
       <div class="heading-row"><div><h2>Alert Center</h2><p>Review, investigate and resolve detection alerts</p></div><a class="button secondary" href="/api/export/alerts.csv" id="export-alerts">↓ Export CSV</a></div>

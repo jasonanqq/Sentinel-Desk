@@ -27,8 +27,9 @@ function displayView(view) {
   state.view = view;
   document.querySelectorAll('.view').forEach(node => node.classList.toggle('hidden', node.id !== `view-${view}`));
   document.querySelectorAll('[data-view]').forEach(node => node.classList.toggle('active', node.dataset.view === view));
-  $('page-title').textContent = ({overview:'Overview',events:'Event Explorer',alerts:'Alert Center',sources:'Data Ingestion',email:'Email Threat Analysis'})[view];
+  $('page-title').textContent = ({overview:'Overview',events:'Event Explorer',search:'Search Workbench',alerts:'Alert Center',sources:'Data Ingestion',email:'Email Threat Analysis'})[view];
   if (view === 'email') window.EmailDesk?.load();
+  if (view === 'search') window.SearchLab?.load();
   if (view === 'events') loadEvents();
   if (view === 'alerts') loadAlerts();
   if (view === 'overview') loadOverview();
@@ -112,7 +113,7 @@ function applyCustom() {
 }
 function refreshData() {
   updateExports();
-  return Promise.all([loadOverview(),loadEvents(),loadAlerts(),window.EmailDesk?.load()]);
+  return Promise.all([loadOverview(),loadEvents(),loadAlerts(),window.EmailDesk?.load(),state.view === 'search' ? window.SearchLab?.load() : undefined]);
 }
 function updateExports() {
   const eventParams=eventParameters();
@@ -406,5 +407,6 @@ window.addEventListener('DOMContentLoaded',()=>{
     if(state.view==='events')loadEvents();
     if(state.view==='alerts')loadAlerts();
     if(state.view==='email')window.EmailDesk?.load();
+    if(state.view==='search')window.SearchLab?.load();
   },12000);
 });

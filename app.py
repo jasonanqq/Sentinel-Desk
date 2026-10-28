@@ -15,6 +15,7 @@ from urllib.parse import parse_qs, urlparse
 
 import engine
 import email_threat
+import search_lab
 from collectors import CollectorManager
 from parsers import parse_fortigate_line
 
@@ -91,6 +92,12 @@ class Handler(BaseHTTPRequestHandler):
         param = lambda name: query.get(name, [''])[0]
         start, end = param('from'), param('to')
         try:
+            if path == '/api/search/run':
+                return self.send_json(200, search_lab.execute(param('q'), start, end))
+            if path == '/api/search/saved':
+                return self.send_json(200, {'items': search_lab.list_saved()})
+            if path == '/api/search/facets':
+                return self.send_json(200, {'items': search_lab.facets(start, end)})
             if path == '/api/email/stats':
                 return self.send_json(200, email_threat.stats(start, end, param('date_field') or 'analysed_at'))
             if path == '/api/email/investigations':
@@ -126,7 +133,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_bytes(200, output.getvalue().encode('utf-8-sig'), 'text/csv; charset=utf-8')
             if path == '/':
                 filepath = ROOT / 'static' / 'index.html'
-            elif path.startswith('/static/') and Path(path).name in {'app.js', 'email.js', 'style.css'}:
+            elif path.startswith('/static/') and Path(path).name in {'app.js', 'email.js', 'style.css', 'search.js'}:
                 filepath = ROOT / 'static' / Path(path).name
             else:
                 return self.send_json(404, {'error': 'Not found'})
@@ -144,6 +151,16 @@ class Handler(BaseHTTPRequestHandler):
         if not self.same_origin():
             return self.send_json(403, {'error': 'Invalid origin'})
         try:
+            if path == '/api/search/saved':
+                payload = self.read_json()
+                if not isinstance(payload, dict):
+                    raise ValueError('Invalid saved search')
+                return self.send_json(201, {'items': search_lab.save(payload.get('name'), payload.get('query'))})
+            if path == '/api/search/saved/delete':
+                payload = self.read_json()
+                if not isinstance(payload, dict):
+                    raise ValueError('Invalid saved search ID')
+                return self.send_json(200, {'deleted': search_lab.remove(payload.get('id'))})
             if path == '/api/email/analyse':
                 payload = self.read_json()
                 if not isinstance(payload, dict):

@@ -14,6 +14,9 @@ from parsers import normalize_windows_record
 LOCK = threading.RLock()
 DATABASE = Path(os.environ.get('MONITOR_DB', str(Path(__file__).resolve().parent / 'events.db')))
 SOURCES = {'fortigate', 'windows', 'linux', 'application', 'cloud', 'other'}
+INDEX_BY_SOURCE = {'fortigate': 'network', 'windows': 'endpoint', 'linux': 'endpoint', 'application': 'application', 'cloud': 'cloud', 'other': 'main'}
+TYPE_BY_SOURCE = {'fortigate': 'fortigate:log', 'windows': 'windows:security', 'linux': 'linux:syslog', 'application': 'application:log', 'cloud': 'cloud:event', 'other': 'generic:event'}
+INDEXES = {'network', 'endpoint', 'application', 'cloud', 'main'}
 RULES = {
     'AUTH-001': ('Repeated failed logins', 'high'),
     'AUTH-002': ('Login success after multiple failures', 'critical'),
@@ -96,9 +99,28 @@ def initialize():
                 VALUES(new.id,new.message,new.username,new.src_ip,new.dest_ip);
             END;
         ''')
+        columns = {row['name'] for row in db.execute('PRAGMA table_info(events)')}
+        for name in ('index_name', 'sourcetype', 'host'):
+            if name not in columns:
+                db.execute(f"ALTER TABLE events ADD COLUMN {name} TEXT NOT NULL DEFAULT ''")
+        for source, idx in INDEX_BY_SOURCE.items():
+            db.execute("UPDATE events SET index_name=? WHERE source=? AND index_name=''", (idx, source))
+            db.execute("UPDATE events SET sourcetype=? WHERE source=? AND sourcetype=''", (TYPE_BY_SOURCE[source], source))
+        db.execute("UPDATE events SET index_name='main' WHERE index_name='' ")
+        db.execute("UPDATE events SET sourcetype='generic:event' WHERE sourcetype='' ")
+        db.execute('CREATE INDEX IF NOT EXISTS events_index_time_idx ON events(index_name, timestamp DESC)')
+        db.execute('CREATE INDEX IF NOT EXISTS events_sourcetype_time_idx ON events(sourcetype, timestamp DESC)')
+        db.execute('CREATE INDEX IF NOT EXISTS events_host_time_idx ON events(host, timestamp DESC)')
+        db.execute('''CREATE TABLE IF NOT EXISTS saved_searches (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL UNIQUE,
+          query TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        )''')
         if not is_existing:
             db.execute('''INSERT INTO events_fts(rowid,message,username,src_ip,dest_ip)
-                SELECT id,message,username,src_ip,dest_ip FROM events''')
+                SELECT id,message,username,src_ip,dest_ip FROM events e
+                WHERE NOT EXISTS (SELECT 1 FROM events_fts f WHERE f.rowid=e.id)''')
 
 
 def clean_text(value, max_length=500):
@@ -146,6 +168,20 @@ def normalize(raw):
             details_json, now_iso())
 
 
+def search_metadata(raw, event):
+    source = event[1]
+    idx = clean_text(raw.get('index', INDEX_BY_SOURCE[source]), 30).lower() if isinstance(raw, dict) else INDEX_BY_SOURCE[source]
+    if idx not in INDEXES:
+        raise ValueError('index must be network, endpoint, application, cloud or main')
+    sourcetype = clean_text(raw.get('sourcetype', TYPE_BY_SOURCE[source]), 80) if isinstance(raw, dict) else TYPE_BY_SOURCE[source]
+    host = clean_text(raw.get('host', ''), 100) if isinstance(raw, dict) else ''
+    if not re.fullmatch(r'[A-Za-z0-9_.:-]{1,80}', sourcetype):
+        raise ValueError('sourcetype contains unsupported characters')
+    if host and not re.fullmatch(r'[A-Za-z0-9_.:-]{1,100}', host):
+        raise ValueError('host contains unsupported characters')
+    return idx, sourcetype, host
+
+
 def record_alert(db, rule_id, entity, summary, timestamp, event_id):
     title, severity = RULES[rule_id]
     cutoff = (datetime.fromisoformat(timestamp) - timedelta(minutes=10)).isoformat(timespec='seconds')
@@ -163,7 +199,7 @@ def record_alert(db, rule_id, entity, summary, timestamp, event_id):
 
 
 def detect(db, event, event_id):
-    timestamp, source, kind, severity, ip, destination, username, message, details, received = event
+    timestamp, source, kind, severity, ip, destination, username, message, details, received = event[:10]
     instant = datetime.fromisoformat(timestamp)
     if kind in {'login_failed', 'login_success'} and ip:
         since = (instant - timedelta(minutes=10)).isoformat(timespec='seconds')
@@ -193,10 +229,11 @@ def detect(db, event, event_id):
 
 def ingest(raw):
     event = normalize(raw)
+    metadata = search_metadata(raw, event)
     with LOCK, connect() as db:
         cursor = db.execute('''INSERT INTO events
-            (timestamp,source,event_type,severity,src_ip,dest_ip,username,message,details,received_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?)''', event)
+            (timestamp,source,event_type,severity,src_ip,dest_ip,username,message,details,received_at,index_name,sourcetype,host)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''', event + metadata)
         detect(db, event, cursor.lastrowid)
         return cursor.lastrowid
 
@@ -204,13 +241,14 @@ def ingest(raw):
 def ingest_batch(items):
     if not isinstance(items, list) or not 1 <= len(items) <= 2000:
         raise ValueError('Provide an events array with 1 to 2000 entries')
-    normalized = sorted((normalize(item) for item in items), key=lambda event: event[0])
+    normalized = sorted(((normalize(item), item) for item in items), key=lambda pair: pair[0][0])
     with LOCK, connect() as db:
         ids = []
-        for event in normalized:
+        for event, raw in normalized:
+            metadata = search_metadata(raw, event)
             cursor = db.execute('''INSERT INTO events
-                (timestamp,source,event_type,severity,src_ip,dest_ip,username,message,details,received_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?)''', event)
+                (timestamp,source,event_type,severity,src_ip,dest_ip,username,message,details,received_at,index_name,sourcetype,host)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''', event + metadata)
             detect(db, event, cursor.lastrowid)
             ids.append(cursor.lastrowid)
         return ids
